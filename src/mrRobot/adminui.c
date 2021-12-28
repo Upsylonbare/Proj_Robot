@@ -85,13 +85,21 @@ static void AdminUI_IDLE()
 static void Admin_GetChar()
 {
     LOG_ADMINUI("ADMINUI GET CHAR\r\n");
-    admin->character = getchar();
-    if(admin->character == LEFT_CHAR) admin->velocity_vector.dir = LEFT;
-    else if(admin->character == RIGHT_CHAR) admin->velocity_vector.dir = RIGHT;
-    else if(admin->character == FORWARD_CHAR) admin->velocity_vector.dir = FORWARD;
-    else if(admin->character == BACKWARD_CHAR) admin->velocity_vector.dir = BACKWARD;
-    else if(admin->character == STOP_CHAR) admin->velocity_vector.dir = NO;
-    else if(admin->character == QUIT_CHAR) admin->velocity_vector.dir = NO;
+    if(admin)
+    {
+        admin->character = getchar();
+        if(admin->character == LEFT_CHAR) admin->velocity_vector.dir = LEFT;
+        else if(admin->character == RIGHT_CHAR) admin->velocity_vector.dir = RIGHT;
+        else if(admin->character == FORWARD_CHAR) admin->velocity_vector.dir = FORWARD;
+        else if(admin->character == BACKWARD_CHAR) admin->velocity_vector.dir = BACKWARD;
+        else if(admin->character == STOP_CHAR) admin->velocity_vector.dir = NO;
+        else if(admin->character == QUIT_CHAR) admin->velocity_vector.dir = NO;
+    }
+    else
+    {
+        LOG_ADMINUI("ERROR ADMINUI GET CHAR\r\n");
+    }
+
 }
 
 static void Admin_init()
