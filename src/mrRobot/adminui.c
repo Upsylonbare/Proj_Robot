@@ -71,7 +71,7 @@ static void AdminUI_IDLE()
     printf("e for stop\r\n");
     printf("a for quit\r\n");
     system("stty -echo");
-    system("stty cbreak");
+    system("stty cbreak"); //for enable getchar without press enter
     while(admin->character != QUIT_CHAR)
     {
         Admin_GetChar();
@@ -80,8 +80,9 @@ static void AdminUI_IDLE()
         pilotstate = Pilot_getState();
         Log_Pilot(pilotstate);
     }
-    system("stty -cbreak");
-    system("stty echo");
+    printf("\n"); //for keeping last pilot state
+    system("stty -cbreak"); //for disable getchar without press enter
+    system("stty echo"); //for echo chqracters
 
 }
 
