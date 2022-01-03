@@ -105,6 +105,10 @@ extern PilotState Pilot_getState();
  */
 extern void Pilot_check();
 
+/**
+ * @brief description
+ */
+extern void Log_Pilot(PilotState localpilot);
 
 
 #endif /* PILOT_H */

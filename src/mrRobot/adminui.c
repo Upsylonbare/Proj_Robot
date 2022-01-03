@@ -21,6 +21,8 @@ typedef struct Admin_s
 
 Admin* admin;
 
+PilotState pilotstate;
+
 static void Admin_init();
 static void Admin_GetChar();
 static void AdminUI_IDLE();
@@ -75,7 +77,8 @@ static void AdminUI_IDLE()
         Admin_GetChar();
         admin->velocity_vector.power = NOMINAL_POWER;
         Pilot_setVelocity(admin->velocity_vector);
-        Pilot_getState();
+        pilotstate = Pilot_getState();
+        Log_Pilot(pilotstate);
     }
     system("stty -cbreak");
     system("stty echo");

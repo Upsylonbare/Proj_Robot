@@ -109,6 +109,27 @@ PilotState Pilot_getState()
     return pilot->pilot_state;
 }
 
+void Log_Pilot(PilotState localpilot)
+{
+    if(localpilot.collision == 0)
+    {
+        printf("Collision :");
+        printf(GREEN);
+        printf(" No ");
+        printf(DEFAUT);
+    }
+    else
+    {
+        printf("Collision :");
+        printf(RED);
+        printf(" YES ");
+        printf(DEFAUT);
+    }
+    printf("Luminosite : %f ", localpilot.luminosity);
+    printf("Vitesse : %d ",localpilot.speed);
+    printf("\r");
+}
+
 static void Pilot_init()
 {
     LOG_PILOT("PILOT INIT\r\n");
