@@ -84,6 +84,9 @@ static void AdminUI_IDLE()
     system("stty -cbreak"); //for disable getchar without press enter
     system("stty echo"); //for echo chqracters
 
+    //tc sett att
+    // exec ve/ fork
+
 }
 
 static void Admin_GetChar()
