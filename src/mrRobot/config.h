@@ -25,6 +25,8 @@
 #define BACKWARD_CHAR   's'
 #define STOP_CHAR       'e'
 #define QUIT_CHAR       'a'
+#define CLEAR_CHAR      'c'
+#define LOG_CHAR        'l'
 
 #define DEFAULT_DIRECTION   NO
 #define DEFAULT_POWER       0

@@ -51,10 +51,16 @@ typedef struct PilotState_s
     float luminosity;
 } PilotState;
 
+typedef enum
+{
+    IDLE,
+    RUNNING,
+}e_state;
+
 typedef struct Pilot_s
 {
-    VelocityVector velocity_vector;
     PilotState pilot_state;
+    e_state state;
 } Pilot;
 
 /**
@@ -104,12 +110,6 @@ extern PilotState Pilot_getState();
  * @brief description 
  */
 extern void Pilot_check();
-
-/**
- * @brief description
- */
-extern void Log_Pilot(PilotState localpilot);
-
 
 #endif /* PILOT_H */
 

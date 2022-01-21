@@ -14,11 +14,19 @@
 #define LOG_PILOT(...)
 #endif
 
+typedef enum
+{
+    SETVEL,
+    CHECK,
+    STOP,
+}e_event;
+
 Pilot* pilot;
 
-//static functions
-static void Pilot_init();
-static void Pilot_deinit();
+//private protorypes
+static void Pilot_run(e_event event, VelocityVector velocityVector);
+static void Pilot_sendMvt(VelocityVector velocityVector);
+static bool_e Pilot_hasBumped();
 
 //public functions
 
@@ -26,17 +34,13 @@ void Pilot_start()
 {
     LOG_PILOT("PILOT START\r\n");
     Pilot_new();
-    Pilot_init();
     Robot_start();
-    Pilot_setVelocity(pilot->velocity_vector);
 }
 
 void Pilot_stop()
 {
-    LOG_PILOT("PILOT STOP\r\n");
-    Robot_stop();
-    Pilot_deinit();
-    Pilot_free();
+    VelocityVector unused = {NO,0};
+    Pilot_run(STOP, unused);
 }
 
 void Pilot_new()
@@ -61,6 +65,105 @@ void Pilot_free()
 void Pilot_setVelocity(VelocityVector vel)
 {
     LOG_PILOT("PILOT SET VELOCITY\r\n");
+    Pilot_run(SETVEL, vel);
+}
+
+PilotState Pilot_getState()
+{
+    LOG_PILOT("PILOT GET STATE\r\n");
+    SensorState sensorstate = Robot_getSensorState();
+    pilot->pilot_state.luminosity = sensorstate.luminosity;
+    pilot->pilot_state.speed = Robot_getRobotSpeed();
+    return pilot->pilot_state;
+}
+
+void Pilot_check()
+{
+    LOG_PILOT("PILOT CHECK\r\n");
+    VelocityVector unused = {NO,0};
+
+    Pilot_run(CHECK, unused);
+}
+
+//private functions
+
+static void Pilot_run(e_event event, VelocityVector velocityVector)
+{
+    LOG_PILOT("PILOT RUN ");
+    switch(pilot->state)
+    {
+    case IDLE:
+        LOG_PILOT("IDLE\r\n");
+
+        switch (event)
+        {
+        case SETVEL:
+            if(velocityVector.dir == NO)
+            {
+                pilot->state = IDLE;
+                velocityVector.dir = NO;
+                Pilot_sendMvt(velocityVector);
+            }
+            else
+            {
+                pilot->state = RUNNING;
+                Pilot_sendMvt(velocityVector);
+            }
+            break;
+        case STOP:
+            velocityVector.dir = NO;
+            Pilot_sendMvt(velocityVector);
+            Robot_stop();
+        default:
+            break;
+        }
+        break;
+
+    case RUNNING:
+        LOG_PILOT("RUNNING\r\n");
+        switch (event)
+        {
+        case SETVEL:
+            if(velocityVector.dir == NO)
+            {
+                pilot->state = IDLE;
+                velocityVector.dir = NO;
+                Pilot_sendMvt(velocityVector);
+            }
+            else
+            {
+                pilot->state = RUNNING;
+                Pilot_sendMvt(velocityVector);
+            }
+            break;
+        case CHECK:
+            if(Pilot_hasBumped())
+            {
+                pilot->state = IDLE;
+                velocityVector.dir = NO;
+                Pilot_sendMvt(velocityVector);
+            }
+            else
+            {
+                pilot->state = RUNNING;
+            }
+            break;
+        case STOP:
+            velocityVector.dir = NO;
+            Pilot_sendMvt(velocityVector);
+            Robot_stop();
+        default:
+            break;
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+static void Pilot_sendMvt(VelocityVector vel)
+{
+    LOG_PILOT("PILOT SEND MVT\r\n");
     if(vel.dir)
     {
         switch (vel.dir)
@@ -82,84 +185,20 @@ void Pilot_setVelocity(VelocityVector vel)
                 break;
             default:
                 Robot_setWheelsVelocity(DEFAULT_POWER, DEFAULT_POWER);
-                LOG_PILOT("ERROR PILOT SET VELOCITY : error with vel.dir value\r\n");        
+                LOG_PILOT("ERROR PILOT SEND MVT : error with vel.dir value\r\n");        
                 break;
         }
     }
     else
     {
-        LOG_PILOT("ERROR PILOT SET VELOCITY : vel.dir is null\r\n");
+        LOG_PILOT("ERROR PILOT SEND MVT : vel.dir is null\r\n");
     }
 }
 
-PilotState Pilot_getState()
+static bool_e Pilot_hasBumped()
 {
-    LOG_PILOT("PILOT GET STATE\r\n");
-    SensorState sensor_state = Robot_getSensorState();
-    if(pilot)
-    {
-        pilot->pilot_state.collision = sensor_state.collision;
-        pilot->pilot_state.luminosity = sensor_state.luminosity;
-        pilot->pilot_state.speed = Robot_getRobotSpeed();    
-    }
-    else
-    {
-        LOG_PILOT("ERROR PILOT GET STATE\r\n");
-    }
-    return pilot->pilot_state;
-}
-
-void Log_Pilot(PilotState localpilot)
-{
-    if(localpilot.collision == 0)
-    {
-        printf("Collision :");
-        printf(GREEN);
-        printf(" No ");
-        printf(DEFAUT);
-    }
-    else
-    {
-        printf("Collision :");
-        printf(RED);
-        printf(" YES ");
-        printf(DEFAUT);
-    }
-    printf("Luminosite : %f ", localpilot.luminosity);
-    printf("Vitesse : %d ",localpilot.speed);
-    printf("\r");
-}
-
-static void Pilot_init()
-{
-    LOG_PILOT("PILOT INIT\r\n");
-    if(pilot)
-    {
-    pilot->pilot_state.collision = DEFAULT_COLLISION;
-    pilot->pilot_state.luminosity = DEFAULT_LUMINOSITY;
-    pilot->pilot_state.speed = DEFAULT_SPEED;
-    pilot->velocity_vector.dir = DEFAULT_DIRECTION;
-    pilot->velocity_vector.power = DEFAULT_POWER;
-    }
-    else
-    {
-        LOG_PILOT("ERROR PILOT INIT\r\n");
-    }
-}
-
-static void Pilot_deinit()
-{
-    LOG_PILOT("PILOT DEINIT\r\n");
-    if(pilot)
-    {
-    pilot->pilot_state.collision = 0;
-    pilot->pilot_state.luminosity = 0;
-    pilot->pilot_state.speed = 0;
-    pilot->velocity_vector.dir = NO;
-    pilot->velocity_vector.power = 0;
-    }
-    else
-    {
-        LOG_PILOT("ERROR PILOT DEINIT\r\n");
-    }
+    LOG_PILOT("PILOT HAS BUMPED ?\r\n");
+    SensorState local = Robot_getSensorState();
+    pilot->pilot_state.collision = local.collision == BUMPED ? BUMPED : NO_BUMP;
+    return local.collision == BUMPED;
 }
