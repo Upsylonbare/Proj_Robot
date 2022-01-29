@@ -44,6 +44,8 @@ void AdminUI_start()
     printf("d for right\r\n");
     printf("e for stop\r\n");
     printf("a for quit\r\n");
+    printf("l for log\r\n");
+    printf("c for clear log\r\n");
     system("stty -echo");
     system("stty cbreak"); //for enable getchar without press enter
     AdminUI_run();
