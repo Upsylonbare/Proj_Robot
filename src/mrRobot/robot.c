@@ -53,7 +53,6 @@ void Robot_free(void)
     LOG_ROBOT("ROBOT FREE\r\n");
     if(robot)
     {
-        LOG_ROBOT("ROBOT FREE\r\n");
         free(robot);
     }
     else
@@ -69,7 +68,8 @@ void Robot_setWheelsVelocity(int mr, int ml)
     {
         if
         (
-            (Motor_setCmd(robot->motor_right, mr) == -1) ||
+            (Motor_setCmd(robot->motor_right, mr) == -1)
+            ||
             (Motor_setCmd(robot->motor_left, ml) == -1)
         )
         {
@@ -157,11 +157,15 @@ static void Robot_init()
         {
             if
             (
-                ((robot->motor_right = Motor_open(RIGHT_MOTOR)) != NULL) &&
-                ((robot->motor_left = Motor_open(LEFT_MOTOR)) != NULL) &&
-                ((robot->contact_bumper = ContactSensor_open(FRONT_BUMPER)) != NULL) &&
-                ((robot->contact_under = ContactSensor_open(FLOOR_SENSOR)) != NULL) &&
-                ((robot->light_sensor = LightSensor_open(LIGHT_SENSOR)) != NULL)
+                ((robot->motor_right = Motor_open(RIGHT_MOTOR)) == NULL) 
+                ||
+                ((robot->motor_left = Motor_open(LEFT_MOTOR)) == NULL) 
+                ||
+                ((robot->contact_bumper = ContactSensor_open(FRONT_BUMPER)) == NULL) 
+                ||
+                ((robot->contact_under = ContactSensor_open(FLOOR_SENSOR)) == NULL) 
+                ||
+                ((robot->light_sensor = LightSensor_open(LIGHT_SENSOR)) == NULL)
             )
             {
                 LOG_ROBOT("ERROR ROBOT INIT : open motors and sensors\r\n");

@@ -15,30 +15,49 @@
 typedef struct Admin_s
 {
     char character;
-    VelocityVector velocity_vector;
 
 } Admin;
 
 Admin* admin;
 
-PilotState pilotstate;
+static void AdminUI_captureChoice();
+static void AdminUI_askMvt(Direction direction);
+static VelocityVector AdminUI_translate(Direction direction);
+static void AdminUI_ask4Log();
+static void AdminUI_askClearLog();
+static void AdminUI_eraseLog();
+static void AdminUI_quit();
+static void AdminUI_run();
+static void AdminUI_display();
 
-static void Admin_init();
-static void Admin_GetChar();
-static void AdminUI_IDLE();
+
 
 void AdminUI_start()
 {
     LOG_ADMINUI("ADMINUI START\r\n");
     Pilot_start();
-    Admin_init();
-    AdminUI_IDLE();
+    LOG_ADMINUI("ADMINUI GOING IDLE\r\n");
+    printf("Press :\r\n");
+    printf("z for forward\r\n");
+    printf("s for backward\r\n");
+    printf("q for left\r\n");
+    printf("d for right\r\n");
+    printf("e for stop\r\n");
+    printf("a for quit\r\n");
+    printf("l for log\r\n");
+    printf("c for clear log\r\n");
+    system("stty -echo");
+    system("stty cbreak"); //for enable getchar without press enter
+    AdminUI_run();
+    //tc sett att
+    // exec ve/ fork
 }
 
 void AdminUI_stop()
 {
-    LOG_ADMINUI("ADMINUI STOP\r\n");
-    Pilot_stop();
+    printf("\n"); //for keeping last pilot state
+    system("stty -cbreak"); //for disable getchar without press enter
+    system("stty echo"); //for echo chqracters
 }
 
 void AdminUI_new()
@@ -60,66 +79,114 @@ void AdminUI_free()
     }
 }
 
-static void AdminUI_IDLE()
+static void AdminUI_captureChoice()
 {
-    LOG_ADMINUI("ADMINUI GOING IDLE\r\n");
-    printf("Press :\r\n");
-    printf("z for forward\r\n");
-    printf("s for backward\r\n");
-    printf("q for left\r\n");
-    printf("d for right\r\n");
-    printf("e for stop\r\n");
-    printf("a for quit\r\n");
-    system("stty -echo");
-    system("stty cbreak"); //for enable getchar without press enter
-    while(admin->character != QUIT_CHAR)
-    {
-        Admin_GetChar();
-        admin->velocity_vector.power = NOMINAL_POWER;
-        Pilot_setVelocity(admin->velocity_vector);
-        pilotstate = Pilot_getState();
-        Log_Pilot(pilotstate);
-    }
-    printf("\n"); //for keeping last pilot state
-    system("stty -cbreak"); //for disable getchar without press enter
-    system("stty echo"); //for echo chqracters
-
-    //tc sett att
-    // exec ve/ fork
-
-}
-
-static void Admin_GetChar()
-{
-    LOG_ADMINUI("ADMINUI GET CHAR\r\n");
+    LOG_ADMINUI("ADMINUI CAPTURE CHOICE\r\n");
     if(admin)
     {
         admin->character = getchar();
-        if(admin->character == LEFT_CHAR) admin->velocity_vector.dir = LEFT;
-        else if(admin->character == RIGHT_CHAR) admin->velocity_vector.dir = RIGHT;
-        else if(admin->character == FORWARD_CHAR) admin->velocity_vector.dir = FORWARD;
-        else if(admin->character == BACKWARD_CHAR) admin->velocity_vector.dir = BACKWARD;
-        else if(admin->character == STOP_CHAR) admin->velocity_vector.dir = NO;
-        else if(admin->character == QUIT_CHAR) admin->velocity_vector.dir = NO;
     }
     else
     {
-        LOG_ADMINUI("ERROR ADMINUI GET CHAR\r\n");
+        LOG_ADMINUI("ERROR ADMINUI CAPTURE CHOICE\r\n");
     }
 
 }
 
-static void Admin_init()
+static void AdminUI_askMvt(Direction direction)
 {
-    LOG_ADMINUI("ADMINUI INIT\r\n");
-    if(admin)
+    LOG_ADMINUI("ADMINUI ASK MVT\r\n");
+    VelocityVector localvector = AdminUI_translate(direction);
+    Pilot_setVelocity(localvector);
+}
+
+static VelocityVector AdminUI_translate(Direction direction)
+{
+    LOG_ADMINUI("ADMINUI TRANSLATE\r\n");
+    VelocityVector localvector;
+    localvector.dir = direction;
+    localvector.power = NOMINAL_POWER;
+    return localvector;
+}
+
+static void AdminUI_ask4Log()
+{
+    Pilot_check();
+    PilotState localpilot = Pilot_getState();
+    if(localpilot.collision == 0)
     {
-        admin->character = (char) STOP_CHAR;
-        admin->velocity_vector.dir = NO;
-        admin->velocity_vector.power = NO;
+        printf("\rCollision :");
+        printf(GREEN);
+        printf(" No ");
+        printf(DEFAUT);
     }
     else
     {
-        LOG_ADMINUI("ERROR ADMINUI INIT\r\n");
+        printf("\rCollision :");
+        printf(RED);
+        printf(" YES ");
+        printf(DEFAUT);
     }
+    printf("Luminosite : %f ", localpilot.luminosity);
+    printf("Vitesse : %d ",localpilot.speed);
+}
+
+static void AdminUI_askClearLog()
+{
+    AdminUI_eraseLog();
+}
+
+static void AdminUI_eraseLog()
+{
+    printf("\033[2K\r");
+}
+
+static void AdminUI_quit()
+{
+    Pilot_stop();
+}
+
+static void AdminUI_run()
+{
+    while(admin->character != QUIT_CHAR)
+    {
+        AdminUI_display();
+        AdminUI_captureChoice();
+        switch (admin->character)
+        {
+        case QUIT_CHAR:
+            AdminUI_quit();
+            break;
+        case CLEAR_CHAR:
+            AdminUI_askClearLog();
+            break;
+        case LOG_CHAR:
+            AdminUI_ask4Log();
+            break;
+        case LEFT_CHAR:
+            AdminUI_askMvt(LEFT);
+            break;
+        case RIGHT_CHAR:
+            AdminUI_askMvt(RIGHT);
+            break;
+        case FORWARD_CHAR:
+            AdminUI_askMvt(FORWARD);
+            break;
+        case BACKWARD_CHAR:
+            AdminUI_askMvt(BACKWARD);
+            break;
+        case STOP_CHAR:
+            AdminUI_askMvt(NO);
+            break;
+        default:
+            break;
+        }
+        
+    }
+
+}
+
+static void AdminUI_display()
+{
+    LOG_ADMINUI("ADMINUI DISPLAY\r\n");
 }
