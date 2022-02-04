@@ -53,14 +53,19 @@ typedef struct PilotState_s
 
 typedef enum
 {
-    IDLE,
-    RUNNING,
-}e_state;
+    S_FORGET = 0,
+    S_IDLE,
+    S_RUNNING,
+    S_SETVEL,
+    S_CHECK,
+    S_DEATH,
+    STATE_NB
+}state_e;
 
 typedef struct Pilot_s
 {
     PilotState pilot_state;
-    e_state state;
+    state_e state;
 } Pilot;
 
 /**

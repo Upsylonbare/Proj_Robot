@@ -16,17 +16,52 @@
 
 typedef enum
 {
-    SETVEL,
-    CHECK,
-    STOP,
-}e_event;
+    E_INITPILOT = 0,
+    E_SETVEL,
+    E_SETVEL_IS_STOP,
+    E_SETVEL_NOT_STOP,
+    E_CHECK,
+    E_CHECK_IS_BUMP,
+    E_CHECK_NOT_BUMP,
+    E_STOP,
+    EVENT_NB
+}event_e;
+
+typedef enum
+{
+    A_NOP = 0,
+    A_GO_DEATH,
+    A_SEND_MVT,
+    A_CHECKVEL,
+    A_CHECKBUMP
+}action_e;
+
+typedef struct
+{
+    state_e destState;
+    action_e transAction;
+}transition_s;
 
 Pilot* pilot;
 
+static transition_s mySM[STATE_NB][EVENT_NB] = 
+{
+    [S_IDLE][E_STOP] = {S_DEATH, A_GO_DEATH},
+    [S_IDLE][E_SETVEL] = {S_SETVEL, A_CHECKVEL},
+    [S_RUNNING][E_STOP] = {S_DEATH, A_GO_DEATH},
+    [S_RUNNING][E_SETVEL] = {S_SETVEL, A_CHECKVEL},
+    [S_RUNNING][E_CHECK] = {S_CHECK, A_CHECKBUMP},
+    [S_SETVEL][E_SETVEL_IS_STOP] = {S_IDLE, A_NOP},
+    [S_SETVEL][E_SETVEL_NOT_STOP] = {S_RUNNING, A_SEND_MVT},
+    [S_CHECK][E_CHECK_NOT_BUMP] =  {S_RUNNING, A_NOP},
+    [S_CHECK][E_CHECK_IS_BUMP] = {S_IDLE, A_NOP},
+};
+
 //private protorypes
-static void Pilot_run(e_event event, VelocityVector velocityVector);
+static void Pilot_run(event_e event, VelocityVector velocityVector);
 static void Pilot_sendMvt(VelocityVector velocityVector);
 static bool_e Pilot_hasBumped();
+static void Pilot_performAction(action_e action, VelocityVector velocityVector);
 
 //public functions
 
@@ -40,13 +75,15 @@ void Pilot_start()
 void Pilot_stop()
 {
     VelocityVector unused = {NO,0};
-    Pilot_run(STOP, unused);
+    Pilot_run(E_STOP, unused);
 }
 
 void Pilot_new()
 {
     LOG_PILOT("PILOT NEW\r\n");
-    pilot = (Pilot *) malloc(sizeof(Pilot));
+    pilot = (Pilot *)malloc(sizeof(Pilot));
+    pilot->state = S_IDLE;
+    printf("Pilot State : %d\r\n", pilot->state);
 }
 
 void Pilot_free()
@@ -65,7 +102,7 @@ void Pilot_free()
 void Pilot_setVelocity(VelocityVector vel)
 {
     LOG_PILOT("PILOT SET VELOCITY\r\n");
-    Pilot_run(SETVEL, vel);
+    Pilot_run(E_SETVEL, vel);
 }
 
 PilotState Pilot_getState()
@@ -82,82 +119,29 @@ void Pilot_check()
     LOG_PILOT("PILOT CHECK\r\n");
     VelocityVector unused = {NO,0};
 
-    Pilot_run(CHECK, unused);
+    Pilot_run(E_CHECK, unused);
 }
 
 //private functions
 
-static void Pilot_run(e_event event, VelocityVector velocityVector)
+static void Pilot_run(event_e event, VelocityVector velocityVector)
 {
-    LOG_PILOT("PILOT RUN ");
-    switch(pilot->state)
+    LOG_PILOT("PILOT RUN\r\n");
+
+    transition_s aTransition = mySM[pilot->state][event];
+    state_e aState = aTransition.destState;
+    // printf("Pilot State : %d going in %d\r\n", pilot->state, aState);
+    // printf("Pilot Event : %d so I do %d\r\n", event, aTransition.transAction);
+    //printf("New state is %d\r\n", aState);
+    if(aState != S_FORGET)
     {
-    case IDLE:
-        LOG_PILOT("IDLE\r\n");
-
-        switch (event)
-        {
-        case SETVEL:
-            if(velocityVector.dir == NO)
-            {
-                pilot->state = IDLE;
-                velocityVector.dir = NO;
-                Pilot_sendMvt(velocityVector);
-            }
-            else
-            {
-                pilot->state = RUNNING;
-                Pilot_sendMvt(velocityVector);
-            }
-            break;
-        case STOP:
-            velocityVector.dir = NO;
-            Pilot_sendMvt(velocityVector);
-            Robot_stop();
-        default:
-            break;
-        }
-        break;
-
-    case RUNNING:
-        LOG_PILOT("RUNNING\r\n");
-        switch (event)
-        {
-        case SETVEL:
-            if(velocityVector.dir == NO)
-            {
-                pilot->state = IDLE;
-                velocityVector.dir = NO;
-                Pilot_sendMvt(velocityVector);
-            }
-            else
-            {
-                pilot->state = RUNNING;
-                Pilot_sendMvt(velocityVector);
-            }
-            break;
-        case CHECK:
-            if(Pilot_hasBumped())
-            {
-                pilot->state = IDLE;
-                velocityVector.dir = NO;
-                Pilot_sendMvt(velocityVector);
-            }
-            else
-            {
-                pilot->state = RUNNING;
-            }
-            break;
-        case STOP:
-            velocityVector.dir = NO;
-            Pilot_sendMvt(velocityVector);
-            Robot_stop();
-        default:
-            break;
-        }
-        break;
-    default:
-        break;
+        pilot->state = aState;
+        Pilot_performAction(aTransition.transAction, velocityVector);
+    }
+    if(aState == S_IDLE)
+    {
+        VelocityVector unused = {NO,0};
+        Pilot_sendMvt(unused);
     }
 }
 
@@ -201,4 +185,47 @@ static bool_e Pilot_hasBumped()
     SensorState local = Robot_getSensorState();
     pilot->pilot_state.collision = local.collision == BUMPED ? BUMPED : NO_BUMP;
     return local.collision == BUMPED;
+}
+
+static void Pilot_performAction(action_e action, VelocityVector velocityVector)
+{
+    LOG_PILOT("PILOT PERFORM ACTION\r\n");
+    switch (action)
+    {
+    case A_NOP:
+        //nothing
+        break;
+    case A_GO_DEATH:
+    {   
+        VelocityVector unused = {NO,0};
+        Pilot_sendMvt(unused);
+        Robot_stop();
+        break;
+    }
+    case A_SEND_MVT:
+        Pilot_sendMvt(velocityVector);
+        break;  
+    case A_CHECKVEL:
+        if(velocityVector.dir == NO)
+        {
+            Pilot_run(E_SETVEL_IS_STOP, velocityVector);
+        }
+        else
+        {
+            Pilot_run(E_SETVEL_NOT_STOP, velocityVector);
+        }
+        break;
+    case A_CHECKBUMP:
+        if(Pilot_hasBumped())
+        {
+            Pilot_run(E_CHECK_IS_BUMP, velocityVector);
+        }
+        else
+        {
+            Pilot_run(E_CHECK_NOT_BUMP, velocityVector);
+        }
+        break;
+    default:
+        break;
+    }
 }
