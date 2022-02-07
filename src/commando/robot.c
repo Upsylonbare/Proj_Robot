@@ -2,7 +2,7 @@
   
 #include "config.h"
 #include "robot.h"
-#include "../../infox_prose-x86_64-v0.3/include/infox/prose/prose.h"
+#include "../../../infox_prose-x86_64-v0.3/include/infox/prose/prose.h"
 #include <stdlib.h>
 #include <stdio.h>
 

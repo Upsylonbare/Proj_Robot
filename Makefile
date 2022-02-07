@@ -51,7 +51,8 @@ export LDFLAGS += -L$(INTOXDIR)/lib/ -linfox
 #
 # Définitions du binaire à générer.
 #
-export PROG = $(BINDIR)/robot_pc
+export PROG_TELCO = $(BINDIR)/telco
+export PROG_COMMANDO = $(BINDIR)/commando
 
 #
 # Règles du Makefile.

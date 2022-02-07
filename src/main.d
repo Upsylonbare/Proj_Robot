@@ -1,3 +1,5 @@
-../bin/robot_pc: main.c mrRobot/adminui.h
+../bin/robot_pc: main.c mrRobot/telco/client.h mrRobot/commando/server.h
 
-mrRobot/adminui.h:
+mrRobot/telco/client.h:
+
+mrRobot/commando/server.h:

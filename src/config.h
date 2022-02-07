@@ -39,6 +39,9 @@
 #define INTOX_IP        "0.0.0.0"
 #define INTOX_PORT      12345
 
+#define SERVER_PORT     54321
+#define MAX_PENDING_CONNECTIONS (5)
+
 
 
 
