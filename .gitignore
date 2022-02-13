@@ -1,3 +1,4 @@
 
 *.o
 bin/robot_pc
+*.d
