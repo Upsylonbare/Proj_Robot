@@ -1,5 +1,5 @@
 
-//#define LOG_ENABLE
+#define LOG_ENABLE
 
 //colours for logg
 

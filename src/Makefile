@@ -1,10 +1,11 @@
 
 PACKAGES = commando telco
 
-SRC  = $(wildcard commando/*.c)
-SRC  += $(wildcard telco/*.c)
+SRC_COMMANDO  = $(wildcard commando/*.c)
+SRC_TELCO = $(wildcard telco/*.c)
 
-OBJ = $(SRC:.c=.o)
+OBJ_COMMANDO = $(SRC_COMMANDO:.c=.o)
+OBJ_TELCO = $(SRC_TELCO:.c=.o)
 
 TELCO = ../$(PROG_TELCO)
 COMMANDO = ../$(PROG_COMMANDO)
@@ -16,14 +17,13 @@ all:
 	@$(MAKE) CCFLAGS="$(CCFLAGS)" LDFLAGS="$(LDFLAGS)" $(COMMANDO)
 	@$(MAKE) CCFLAGS="$(CCFLAGS)" LDFLAGS="$(LDFLAGS)" $(TELCO)
 
-$(COMMANDO): $(OBJ)
-	$(CC) $(CCFLAGS) $(OBJ) -o $(COMMANDO) $(LDFLAGS)
+$(COMMANDO): $(OBJ_COMMANDO)
+	$(CC) $(CCFLAGS) $(OBJ_COMMANDO) -o $(COMMANDO) $(LDFLAGS)
 
-$(TELCO): $(OBJ)
-	$(CC) $(CCFLAGS) $(OBJ) -o $(TELCO) $(LDFLAGS)
+$(TELCO): $(OBJ_TELCO)
+	$(CC) $(CCFLAGS) $(OBJ_TELCO) -o $(TELCO) $(LDFLAGS)
 
 .PHONY: clean
 
 clean:
 	@for p in $(PACKAGES); do (cd $$p; $(MAKE) $@); done
-

@@ -83,7 +83,6 @@ void Pilot_new()
     LOG_PILOT("PILOT NEW\r\n");
     pilot = (Pilot *)malloc(sizeof(Pilot));
     pilot->state = S_IDLE;
-    printf("Pilot State : %d\r\n", pilot->state);
 }
 
 void Pilot_free()
