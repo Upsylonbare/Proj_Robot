@@ -1,17 +1,5 @@
-
-#define LOG_ENABLE
-
-//colours for logg
-
-#define BLACK   "\033[30m"
-#define RED     "\033[31m"
-#define GREEN   "\033[32m"
-#define YELLOW  "\033[33m"
-#define BLUE    "\033[34m"
-#define MAGENTA "\033[35m"
-#define CYAN    "\033[36m"
-#define WHITE   "\033[37m"
-#define DEFAUT  "\033[39m"
+#ifndef CONFIG_H
+#define CONFIG_H
 
 #define LEFT_MOTOR MD
 #define RIGHT_MOTOR MA
@@ -41,6 +29,8 @@
 
 #define SERVER_PORT     54321
 #define MAX_PENDING_CONNECTIONS (5)
+
+#endif /* CONFIG_H */
 
 
 

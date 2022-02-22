@@ -1,18 +1,12 @@
 /* -*- mode: c; c-basic-offset: 4; indent-tabs-mode: nil -*- */  
 // a completer
 #include "config.h"
+#include "util.h"
 #include "pilot.h"
 #include "robot.h"
 #include "../../../infox_prose-x86_64-v0.3/include/infox/prose/prose.h"
 #include <stdlib.h>
 #include <stdio.h>
-
-
-#ifdef LOG_ENABLE
-#define LOG_PILOT(...) do{printf(GREEN);printf(__VA_ARGS__);printf(DEFAUT);}while(0)
-#else
-#define LOG_PILOT(...)
-#endif
 
 typedef enum
 {
@@ -27,14 +21,46 @@ typedef enum
     EVENT_NB
 }event_e;
 
+char* eventAsText[EVENT_NB] = 
+{
+    "Init",
+    "Set Velocity",
+    "Set Velocity is stop",
+    "Set Velocity is not stop",
+    "Check",
+    "Check is bump",
+    "Check is not bump",
+    "Stop"
+};
+
 typedef enum
 {
     A_NOP = 0,
     A_GO_DEATH,
     A_SEND_MVT,
     A_CHECKVEL,
-    A_CHECKBUMP
+    A_CHECKBUMP,
+    ACTION_NB
 }action_e;
+
+char* actionAsText[ACTION_NB] = 
+{
+    "No Action",
+    "Go die",
+    "Send Mvt",
+    "Check Vel",
+    "Check Bump"
+};
+
+char* stateAsText[STATE_NB] =
+{
+    "Forget",
+    "Idle",
+    "Running",
+    "Set Vel",
+    "Check",
+    "Dead"
+};
 
 typedef struct
 {
@@ -67,46 +93,42 @@ static void Pilot_performAction(action_e action, VelocityVector velocityVector);
 
 void Pilot_start()
 {
-    LOG_PILOT("PILOT START\r\n");
+    LOG_PILOT("\r\n");
     Pilot_new();
     Robot_start();
 }
 
 void Pilot_stop()
 {
+    LOG_PILOT("\r\n");
     VelocityVector unused = {NO,0};
     Pilot_run(E_STOP, unused);
 }
 
 void Pilot_new()
 {
-    LOG_PILOT("PILOT NEW\r\n");
     pilot = (Pilot *)malloc(sizeof(Pilot));
+    ASSERT_PRINTERROR(pilot);
     pilot->state = S_IDLE;
+
 }
 
 void Pilot_free()
 {
-    LOG_PILOT("PILOT FREE\r\n");
-    if(pilot)
-    {
-        free(pilot);
-    }
-    else
-    {
-        LOG_PILOT("ERROR PILOT FREE : pilot is null\r\n");
-    }
+    LOG_PILOT("\r\n");
+    ASSERT_PRINTERROR(pilot);
+    free(pilot);
 }
 
 void Pilot_setVelocity(VelocityVector vel)
 {
-    LOG_PILOT("PILOT SET VELOCITY\r\n");
+    LOG_PILOT("\r\n");
     Pilot_run(E_SETVEL, vel);
 }
 
 PilotState Pilot_getState()
 {
-    LOG_PILOT("PILOT GET STATE\r\n");
+    LOG_PILOT("\r\n");
     SensorState sensorstate = Robot_getSensorState();
     pilot->pilot_state.luminosity = sensorstate.luminosity;
     pilot->pilot_state.speed = Robot_getRobotSpeed();
@@ -115,9 +137,8 @@ PilotState Pilot_getState()
 
 void Pilot_check()
 {
-    LOG_PILOT("PILOT CHECK\r\n");
+    LOG_PILOT("\r\n");
     VelocityVector unused = {NO,0};
-
     Pilot_run(E_CHECK, unused);
 }
 
@@ -129,9 +150,8 @@ static void Pilot_run(event_e event, VelocityVector velocityVector)
 
     transition_s aTransition = mySM[pilot->state][event];
     state_e aState = aTransition.destState;
-    // printf("Pilot State : %d going in %d\r\n", pilot->state, aState);
-    // printf("Pilot Event : %d so I do %d\r\n", event, aTransition.transAction);
-    //printf("New state is %d\r\n", aState);
+    LOG_PILOT("I'm in state %s and I'm going in state %s\r\n", stateAsText[pilot->state], stateAsText[aState]);
+    LOG_PILOT("because I just received the event %s so I do the action %s\r\n", eventAsText[event], actionAsText[aTransition.transAction]);
     if(aState != S_FORGET)
     {
         pilot->state = aState;
@@ -146,41 +166,39 @@ static void Pilot_run(event_e event, VelocityVector velocityVector)
 
 static void Pilot_sendMvt(VelocityVector vel)
 {
-    LOG_PILOT("PILOT SEND MVT\r\n");
-    if(vel.dir)
+    ASSERT_PRINTERROR(vel.dir);
+    switch (vel.dir)
     {
-        switch (vel.dir)
-        {
-            case LEFT:
-                Robot_setWheelsVelocity(-vel.power, vel.power);
-                break;
-            case RIGHT:
-                Robot_setWheelsVelocity(vel.power, -vel.power);
-                break;
-            case FORWARD:
-                Robot_setWheelsVelocity(vel.power, vel.power);
-                break;
-            case BACKWARD:
-                Robot_setWheelsVelocity(-vel.power, -vel.power);
-                break;
-            case NO:
-                Robot_setWheelsVelocity(DEFAULT_POWER, DEFAULT_POWER);
-                break;
-            default:
-                Robot_setWheelsVelocity(DEFAULT_POWER, DEFAULT_POWER);
-                LOG_PILOT("ERROR PILOT SEND MVT : error with vel.dir value\r\n");        
-                break;
-        }
-    }
-    else
-    {
-        LOG_PILOT("ERROR PILOT SEND MVT : vel.dir is null\r\n");
+        case LEFT:
+            Robot_setWheelsVelocity(-vel.power, vel.power);
+            LOG_PILOT("New direction is Left\r\n");
+            break;
+        case RIGHT:
+            Robot_setWheelsVelocity(vel.power, -vel.power);
+            LOG_PILOT("New direction is Right\r\n");
+            break;
+        case FORWARD:
+            Robot_setWheelsVelocity(vel.power, vel.power);
+            LOG_PILOT("New direction is Forward\r\n");
+            break;
+        case BACKWARD:
+            Robot_setWheelsVelocity(-vel.power, -vel.power);
+            LOG_PILOT("New direction is Backward\r\n");
+            break;
+        case NO:
+            Robot_setWheelsVelocity(DEFAULT_POWER, DEFAULT_POWER);
+            LOG_PILOT("New direction is Stop\r\n");
+            break;
+        default:
+            Robot_setWheelsVelocity(DEFAULT_POWER, DEFAULT_POWER);
+            LOG_PILOT("Something werid with vel.dir value\r\n");        
+            break;
     }
 }
 
 static bool_e Pilot_hasBumped()
 {
-    LOG_PILOT("PILOT HAS BUMPED ?\r\n");
+    LOG_PILOT("\r\n");
     SensorState local = Robot_getSensorState();
     pilot->pilot_state.collision = local.collision == BUMPED ? BUMPED : NO_BUMP;
     return local.collision == BUMPED;
@@ -188,7 +206,7 @@ static bool_e Pilot_hasBumped()
 
 static void Pilot_performAction(action_e action, VelocityVector velocityVector)
 {
-    LOG_PILOT("PILOT PERFORM ACTION\r\n");
+    LOG_PILOT("\r\n");
     switch (action)
     {
     case A_NOP:

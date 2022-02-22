@@ -10,18 +10,15 @@ typedef struct
 
 typedef enum
 {
-    C_LEFT=1, 
-    C_RIGHT, 
-    C_FORWARD, 
-    C_BACKWARD, 
-    C_NO
-}Comm_dir_e;
+    O_QUIT=0,
+    O_LEFT, 
+    O_RIGHT, 
+    O_FORWARD, 
+    O_BACKWARD, 
+    O_NO,
+    O_LOG,
+    O_ORDER_NB
+}Comm_order_e;
 
-
-typedef struct
-{
-    Comm_logs_s comm_logs;
-    Comm_dir_e  comm_dir;
-} Comm_datas_s;
-
+extern char* orderAsText[O_ORDER_NB];
 #endif /*COMMUN_H*/

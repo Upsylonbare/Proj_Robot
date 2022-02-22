@@ -62,6 +62,8 @@ typedef enum
     STATE_NB
 }state_e;
 
+extern char* stateAsText[STATE_NB];
+
 typedef struct Pilot_s
 {
     PilotState pilot_state;

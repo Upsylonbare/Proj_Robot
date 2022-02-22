@@ -1,16 +1,12 @@
 /* -*- mode: c; c-basic-offset: 4; indent-tabs-mode: nil -*- */  
   
 #include "config.h"
+#include "util.h"
 #include "robot.h"
 #include "../../../infox_prose-x86_64-v0.3/include/infox/prose/prose.h"
 #include <stdlib.h>
 #include <stdio.h>
 
-#ifdef LOG_ENABLE
-#define LOG_ROBOT(...) do{printf(BLUE);printf(__VA_ARGS__);printf(DEFAUT);}while(0)
-#else
-#define LOG_ROBOT(...)
-#endif
 
 typedef struct Robot_s
 {
@@ -30,177 +26,100 @@ static void Robot_deinit();
 //Public functions
 void Robot_start(void)
 {
-    LOG_ROBOT("ROBOT START\r\n");
+    LOG_ROBOT("\r\n");
     Robot_new();   //Malloc
     Robot_init();  //affectation des champs de structure + ouverture du port avec simu
 }
 
 void Robot_stop(void)
 {
-    LOG_ROBOT("ROBOT STOP\r\n");
+    LOG_ROBOT("\r\n");
     Robot_deinit(); //deinit
     Robot_free(); //vide memoire
 }
 
 void Robot_new(void)
 {
-    LOG_ROBOT("ROBOT NEW\r\n");
+    LOG_ROBOT("\r\n");
     robot = (Robot*) malloc(sizeof(Robot));
+    ASSERT_PRINTERROR(robot);
 }
 
 void Robot_free(void)
 {
-    LOG_ROBOT("ROBOT FREE\r\n");
-    if(robot)
-    {
-        free(robot);
-    }
-    else
-    {
-        LOG_ROBOT("ERROR ROBOT FREE : robot is null\r\n");
-    }
+    LOG_ROBOT("\r\n");
+    ASSERT_PRINTERROR(robot);
+    free(robot);
 }
 
 void Robot_setWheelsVelocity(int mr, int ml)
 {
-    LOG_ROBOT("ROBOT SET WHEELS VELOCITY\r\n");
-    if(robot)
-    {
-        if
-        (
-            (Motor_setCmd(robot->motor_right, mr) == -1)
-            ||
-            (Motor_setCmd(robot->motor_left, ml) == -1)
-        )
-        {
-            LOG_ROBOT("ERROR ROBOT SET WHEELS VELOCITY\r\n");
-        }
-    }
-    else
-    {
-        LOG_ROBOT("ERROR ROBOT SET WHEELS VELOCITY : robot is null\r\n");
-    }
+    ASSERT_PRINTERROR(robot);
+    ASSERT_PRINTERROR(Motor_setCmd(robot->motor_right, mr) != -1);
+    ASSERT_PRINTERROR(Motor_setCmd(robot->motor_left, ml) != -1);
+    LOG_ROBOT("Just set motorR: %d and motorL: %d\r\n", mr, ml);
 }
 
 int Robot_getRobotSpeed(void)
 {
-    LOG_ROBOT("ROBOT GET SPEED\r\n");
-    if(robot)
-    {
-        int ml = 0;
-        int mr = 0;
-        if
-        (
-            ((mr = Motor_getCmd(robot->motor_right)) == E_CMD) ||
-            ((mr = Motor_getCmd(robot->motor_right)) == E_CMD)
-        )
-        {
-            LOG_ROBOT("ERROR ROBOT GET SPEED : error motor get command\r\n"); 
-            return 0;
-        }
-        else
-        {
-            return abs(mr + ml)/2;
-        }
-    }
-    else
-    {
-        LOG_ROBOT("ERROR ROBOT GET SPEED : robot is null\r\n");
-        return 0;
-    }
+    ASSERT_PRINTERROR(robot)
+    int ml = 0;
+    int mr = 0;
+    ASSERT_PRINTERROR((mr = Motor_getCmd(robot->motor_right)) != E_CMD);
+    ASSERT_PRINTERROR((ml = Motor_getCmd(robot->motor_left)) != E_CMD);
+    int speed = abs(mr + ml)/2;
+    LOG_ROBOT("Speed is %d",speed);
+    return speed;
+
 
 }
 
 SensorState Robot_getSensorState()
 {
-    LOG_ROBOT("ROBOT GET SENSOR STATE\r\n");
     SensorState state = {0};
     ContactStatus contact_status = ERROR;
-    if(robot)
+    ASSERT_PRINTERROR(robot);
+    contact_status = ContactSensor_getStatus(robot->contact_bumper);
+    switch (contact_status)
     {
-        contact_status = ContactSensor_getStatus(robot->contact_bumper);
-        switch (contact_status)
-        {
-        case ERROR:
-                LOG_ROBOT("ERROR ROBOT GET SENSOR STATE : error with contact bumper\r\n");
-            break;
-        case RELEASED:
-                state.collision = NO_BUMP;
-            break;
-        case PRESSED:
-                state.collision = BUMPED;
-            break;
-        default:
-                LOG_ROBOT("ERROR ROBOT GET SENSOR STATE : error with switch contact status value\r\n");
-            break;
-        }        
-        if((state.luminosity = LightSensor_getStatus(robot->light_sensor)) == -1)
-        {
-            LOG_ROBOT("ERROR ROBOT GET SENSOR STATE : error with light sensor value\r\n");
-        }
-    }
-    else
-    {
-        LOG_ROBOT("ERROR ROBOT GET SENSOR STATE : robot is null\r\n");
-        state.collision = 0;
-        state.luminosity = 0;
-    }
+    case ERROR:
+            LOG_ROBOT("ERROR\r\n");
+        break;
+    case RELEASED:
+            state.collision = NO_BUMP;
+            LOG_ROBOT("RELEASED = NO BUMP\r\n");
+        break;
+    case PRESSED:
+            state.collision = BUMPED;
+            LOG_ROBOT("PRESSED = BUMPED\r\n");
+        break;
+    default:
+            LOG_ROBOT("Uninteresting value\r\n");
+        break;
+    }        
+    ASSERT_PRINTERROR((state.luminosity = LightSensor_getStatus(robot->light_sensor)) != -1);
     return state;
 }
 
 static void Robot_init()
 {
-    LOG_ROBOT("ROBOT INIT\r\n");
-    if(ProSE_Intox_init(INTOX_IP, INTOX_PORT) == 0)
-    {
-        if(robot)
-        {
-            if
-            (
-                ((robot->motor_right = Motor_open(RIGHT_MOTOR)) == NULL) 
-                ||
-                ((robot->motor_left = Motor_open(LEFT_MOTOR)) == NULL) 
-                ||
-                ((robot->contact_bumper = ContactSensor_open(FRONT_BUMPER)) == NULL) 
-                ||
-                ((robot->contact_under = ContactSensor_open(FLOOR_SENSOR)) == NULL) 
-                ||
-                ((robot->light_sensor = LightSensor_open(LIGHT_SENSOR)) == NULL)
-            )
-            {
-                LOG_ROBOT("ERROR ROBOT INIT : open motors and sensors\r\n");
-            }
-        }
-        else
-        {
-            LOG_ROBOT("ERROR ROBOT INIT : robot is NULL\r\n");
-        }
-    }
-    else
-    {
-        LOG_ROBOT("ERROR ROBOT INIT : intox connection can't be initialized\r\n");
-    }
+    LOG_ROBOT("\r\n");
+    ASSERT_PRINTERROR(ProSE_Intox_init(INTOX_IP, INTOX_PORT) == 0);
+    ASSERT_PRINTERROR(robot);
+    ASSERT_PRINTERROR(((robot->motor_right = Motor_open(RIGHT_MOTOR)) != NULL));
+    ASSERT_PRINTERROR(((robot->motor_left = Motor_open(LEFT_MOTOR)) != NULL));
+    ASSERT_PRINTERROR(((robot->contact_bumper = ContactSensor_open(FRONT_BUMPER)) != NULL));
+    ASSERT_PRINTERROR(((robot->contact_under = ContactSensor_open(FLOOR_SENSOR)) != NULL));
+    ASSERT_PRINTERROR(((robot->light_sensor = LightSensor_open(LIGHT_SENSOR)) != NULL));
 }
 
 static void Robot_deinit()
 {
-    LOG_ROBOT("ROBOT DEINIT\r\n");
-    if(robot)
-    {
-        if
-        ( 
-            (Motor_close(robot->motor_right) != 0) && 
-            (Motor_close(robot->motor_left) != 0) &&
-            (ContactSensor_close(robot->contact_bumper) != 0) &&
-            (ContactSensor_close(robot->contact_under) != 0) &&
-            (LightSensor_close(robot->light_sensor) != 0)
-        )
-        {
-            LOG_ROBOT("ERROR ROBOT DEINIT : close motors and sensors\r\n");
-        }
-    }
-    else
-    {
-        LOG_ROBOT("ERROR ROBOT DEINIT : robot is NULL\r\n");
-    }
+    LOG_ROBOT("\r\n");
+    ASSERT_PRINTERROR(robot);
+    ASSERT_PRINTERROR(Motor_close(robot->motor_right) == 0);
+    ASSERT_PRINTERROR(Motor_close(robot->motor_left) == 0);
+    ASSERT_PRINTERROR(ContactSensor_close(robot->contact_bumper) == 0);
+    ASSERT_PRINTERROR(ContactSensor_close(robot->contact_under) == 0);
+    ASSERT_PRINTERROR(LightSensor_close(robot->light_sensor) == 0);
 }

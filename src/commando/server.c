@@ -9,29 +9,48 @@
 #include <sys/socket.h>
 
 #include "commun.h"
+#include "util.h"
 #include "pilot.h"
 #include "server.h"
 #include "config.h"
 
-#ifdef LOG_ENABLE
-#define LOG_SERVER(...) do{printf(MAGENTA);printf(__VA_ARGS__);printf(DEFAUT);}while(0)
-#else
-#define LOG_SERVER(...)
-#endif
-
 static void Server_sendMsg(int socket_data);
 static void Server_readMsg(int socket_data);
-static void Server_askMvt(Comm_dir_e direction);
+static void Server_askMvt(Comm_order_e direction);
+
+static int socket_listen;
+static int not_received_quit_char;
+
+char* orderAsText[O_ORDER_NB] = {
+    "Quit",
+    "Left",
+    "Right",
+    "Forward",
+    "Backward",
+    "No",
+    "Logs"
+};
 
 void Server_start()
 {
-    LOG_SERVER("SERVER START\r\n");
-    int socket_listen;
+    LOG_SERVER("\r\n");
     int socket_data;
+    int opt = 1;
     struct sockaddr_in server_address;
+    not_received_quit_char = 1;
     Pilot_start();
     /* Creation du socket : AF_INET = IP, SOCK_STREAM = TCP */
     socket_listen = socket(AF_INET, SOCK_STREAM, 0);
+    if(socket_listen == -1)
+    {
+        perror("socket failed");
+        exit(EXIT_FAILURE);
+    }
+    if (setsockopt(socket_listen, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
+    {
+        perror("failed setsockopt");
+        exit(EXIT_FAILURE);
+    }
     /* Type d'adresse = IP */
     server_address.sin_family = AF_INET;
     /* Port TCP ou le service est accessible */
@@ -39,49 +58,75 @@ void Server_start()
     /* On s'attache a toutes les interfaces */
     server_address.sin_addr.s_addr = htonl(INADDR_ANY); 
      /* On attache le socket a l'adresse indiquee */
-    bind(socket_listen, (struct sockaddr *)&server_address, sizeof(server_address));
+    LOG_SERVER("SERVER is on port %d\r\n", SERVER_PORT);
+    if(bind(socket_listen, (struct sockaddr *)&server_address, sizeof(server_address)) == -1)
+    {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
+    }
     /* Mise en ecoute du socket */
-    listen(socket_listen, MAX_PENDING_CONNECTIONS);
+    if(listen(socket_listen, MAX_PENDING_CONNECTIONS) == -1)
+    {
+        perror("listen failed");
+        exit(EXIT_FAILURE);
+    };
     socket_data = accept(socket_listen, NULL, 0);
-    while(1)
+    if(socket_data == -1)
+    {
+        perror("accept failed");
+        exit(EXIT_FAILURE);
+    }
+    while(not_received_quit_char)
     {
         Server_readMsg(socket_data);
-        Server_sendMsg(socket_data);
     }
 }
 
 void Server_stop()
 {
-    LOG_SERVER("SERVER STOP\r\n");
+    LOG_SERVER("\r\n");
+    close(socket_listen);
     Pilot_stop();
 }
 
 static void Server_sendMsg(int socket_data)
 {
-    LOG_SERVER("SERVER SEND MESSAGE\r\n");
-    Comm_datas_s send_datas;
+    Comm_logs_s send_logs;
+    Pilot_check();
     PilotState local_pilot = Pilot_getState();
-    send_datas.comm_logs.collision = local_pilot.collision;
-    send_datas.comm_logs.luminosity = local_pilot.luminosity;
-    send_datas.comm_logs.speed = local_pilot.speed;
-    send_datas.comm_logs = htonl(send_datas.comm_logs);
-    write(socket_data, &send_datas, sizeof(send_datas));
+    LOG_SERVER("Pilot luminosity: %f speed: %d collision: %d\r\n", local_pilot.luminosity, local_pilot.speed, local_pilot.collision);
+    send_logs.collision = htonl(local_pilot.collision);
+    send_logs.luminosity = htonl(local_pilot.luminosity);
+    send_logs.speed = htonl(local_pilot.speed);
+    write(socket_data, &send_logs, sizeof(send_logs));
+    LOG_SERVER("Just send Pilot luminosity: %f speed: %d collision: %d\r\n",send_logs.luminosity, send_logs.speed, send_logs.collision);
 }
 
 static void Server_readMsg(int socket_data)
 {
-    LOG_SERVER("SERVER READ MESSAGE\r\n");
-    Comm_datas_s received_datas;
-    read(socket_data, &received_datas, sizeof(received_datas));
-    received_datas.comm_dir = ntohl(received_datas.comm_dir);
-    Server_askMvt(received_datas.comm_dir);
+    Comm_order_e received_order;
+    read(socket_data, &received_order, sizeof(received_order));
+    received_order = ntohl(received_order);
+    LOG_SERVER("Juste received %s order\r\n", orderAsText[received_order]);
+    if(received_order == O_LOG)
+    {
+        Server_sendMsg(socket_data);
+    }
+    else if(received_order == O_QUIT)
+    {
+        not_received_quit_char = 0;
+    }
+    else
+    {
+        Server_askMvt(received_order);
+    }
 }
 
-static void Server_askMvt(Comm_dir_e direction)
+static void Server_askMvt(Comm_order_e direction)
 {
-    LOG_SERVER("SERVER ASK MVT\r\n");
     VelocityVector local_vector;
     local_vector.dir = direction;
+    LOG_SERVER("Client ask %s direction\r\n", orderAsText[direction]);
     local_vector.power = NOMINAL_POWER;
     Pilot_setVelocity(local_vector);
 }
